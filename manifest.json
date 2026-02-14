@@ -1,9 +1,10 @@
 {
   "name": "Check Links",
   "description": "Checks the links to see if it is malicious or not using Google Gemini for active checking", //or passive
-  "version": "1.0", //i believe that is optional need to check
-  "manifest_version": 3, //I am not sure about this need to check if optional
+  "version": "1.0", 
+  "manifest_version": 3, 
   "action": {
     "default_popup": "html_for_extension.html",
-    "default_icon": "hello_extensions.png" //I believe we need to change this based on the condition
+    "default_icon": "hello_extensions.png"
   }
+}

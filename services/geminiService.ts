@@ -50,11 +50,8 @@
 // };
 import { SafetyVerdict, VerificationResult } from "../types";
 
-const BACKEND_URLS = [
-  'http://127.0.0.1:8000/analyze',
-  'http://localhost:8000/analyze',
-];
-const BACKEND_TIMEOUT_MS = 8000;
+const BACKEND_URLS = ['http://127.0.0.1:8000/analyze'];
+const BACKEND_TIMEOUT_MS = 3500;
 
 const fetchWithTimeout = async (endpoint: string, url: string) => {
   const controller = new AbortController();
@@ -76,30 +73,32 @@ export const verifyUrlWithAI = async (url: string): Promise<VerificationResult> 
   let lastError: unknown = null;
 
   try {
-    for (const endpoint of BACKEND_URLS) {
-      try {
-        const response = await fetchWithTimeout(endpoint, url);
-
-        if (!response.ok) {
-          throw new Error(`Backend responded with status: ${response.status}`);
+    const response = await Promise.any(
+      BACKEND_URLS.map(async (endpoint) => {
+        const res = await fetchWithTimeout(endpoint, url);
+        if (!res.ok) {
+          throw new Error(`Backend responded with status: ${res.status}`);
         }
+        return res;
+      }),
+    );
 
-        const data = await response.json();
-        return {
-          url,
-          verdict: data.verdict as SafetyVerdict || SafetyVerdict.UNKNOWN,
-          reason: data.reason || "Unable to determine safety.",
-          timestamp: Date.now(),
-        };
-      } catch (error) {
-        lastError = error;
-      }
-    }
+    const data = await response.json();
+    return {
+      url,
+      verdict: data.verdict as SafetyVerdict || SafetyVerdict.UNKNOWN,
+      reason: data.reason || "Unable to determine safety.",
+      risk_score: typeof data.risk_score === 'number' ? data.risk_score : undefined,
+      timestamp: Date.now(),
+    };
   } catch (error) {
     lastError = error;
   }
 
-  console.error("Shield Bridge Error:", lastError);
+  console.warn(
+    "LinkClick backend request failed:",
+    lastError instanceof Error ? lastError.message : String(lastError),
+  );
   return {
     url,
     verdict: SafetyVerdict.UNKNOWN,

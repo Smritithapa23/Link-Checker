@@ -10,6 +10,7 @@ export interface VerificationResult {
   url: string;
   verdict: SafetyVerdict;
   reason: string;
+  risk_score?: number;
   timestamp: number;
 }
 

@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,8 +48,10 @@ PHISH_FEED_SAMPLE_SIZE = 25
 _feed_cache: list[str] = []
 _feed_cache_at = 0.0
 _gemini_cooldown_until = 0.0
-_memory_cache: dict[str, tuple[float, dict[str, str]]] = {}
+_memory_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _valkey_client = None
+_inflight_scans: dict[str, float] = {}
+INFLIGHT_SCAN_TTL_SECONDS = 20
 SSL_CONTEXT = (
     ssl.create_default_context(cafile=certifi.where())
     if certifi is not None
@@ -87,8 +90,8 @@ def extract_json(text: str) -> dict[str, str]:
     return json.loads(cleaned)
 
 
-def fallback_verdict(target_url: str, reason: str = "Unable to complete AI verification.") -> dict[str, str]:
-    return {"url": target_url, "verdict": "UNKNOWN", "reason": reason}
+def fallback_verdict(target_url: str, reason: str = "Unable to complete AI verification.") -> dict[str, Any]:
+    return {"url": target_url, "verdict": "UNKNOWN", "reason": reason, "risk_score": 5}
 
 
 def cache_key_for_url(target_url: str) -> str:
@@ -116,7 +119,7 @@ def init_valkey_client() -> None:
         print(f"[Shield] Valkey unavailable, using memory cache: {exc}")
 
 
-def get_cached_verdict(target_url: str) -> dict[str, str] | None:
+def get_cached_verdict(target_url: str) -> dict[str, Any] | None:
     key = cache_key_for_url(target_url)
     now = time.time()
 
@@ -141,7 +144,7 @@ def get_cached_verdict(target_url: str) -> dict[str, str] | None:
     return value
 
 
-def set_cached_verdict(target_url: str, value: dict[str, str], ttl_seconds: int | None = None) -> None:
+def set_cached_verdict(target_url: str, value: dict[str, Any], ttl_seconds: int | None = None) -> None:
     effective_ttl = ttl_seconds or int(os.getenv("SHIELD_CACHE_TTL_SECONDS", "1800"))
     key = cache_key_for_url(target_url)
     if _valkey_client is not None:
@@ -222,14 +225,16 @@ def build_prompt(target_url: str, recent_known_phish: list[str]) -> str:
         "Use the provided active phishing sample list as current trend context. "
         "If the URL matches or closely imitates those campaign patterns, raise risk. "
         "Return ONLY strict JSON with "
-        'keys "verdict" and "reason". "verdict" must be one of SAFE, SUSPICIOUS, DANGER.\n\n'
+        'keys "verdict", "risk_score", and "reason". '
+        '"verdict" must be one of SAFE, SUSPICIOUS, DANGER. '
+        '"risk_score" must be an integer from 0 to 10 where 0 means malicious/high-risk and 10 means safe/low-risk.\n\n'
         f"URL: {target_url}\n\n"
         "Recent active phishing samples:\n"
         f"{trends_block}"
     )
 
 
-def call_gemini(target_url: str, api_key: str, recent_known_phish: list[str]) -> dict[str, str]:
+def call_gemini(target_url: str, api_key: str, recent_known_phish: list[str]) -> dict[str, Any]:
     endpoint = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"gemini-2.0-flash:generateContent?key={api_key}"
@@ -258,11 +263,16 @@ def call_gemini(target_url: str, api_key: str, recent_known_phish: list[str]) ->
     parsed = extract_json(text)
     verdict = str(parsed.get("verdict", "UNKNOWN")).upper()
     reason = str(parsed.get("reason", "Unable to determine safety.")).strip()
+    try:
+        risk_score = int(parsed.get("risk_score", 5))
+    except Exception:
+        risk_score = 5
 
     if verdict not in {"SAFE", "SUSPICIOUS", "DANGER"}:
         verdict = "UNKNOWN"
+    risk_score = max(0, min(10, risk_score))
 
-    return {"url": target_url, "verdict": verdict, "reason": reason}
+    return {"url": target_url, "verdict": verdict, "reason": reason, "risk_score": risk_score}
 
 
 @app.on_event("startup")
@@ -272,7 +282,7 @@ def startup() -> None:
 
 
 @app.post("/analyze")
-async def analyze(url_data: AnalyzeRequest) -> dict[str, str]:
+async def analyze(url_data: AnalyzeRequest) -> dict[str, Any]:
     global _gemini_cooldown_until
     target_url = str(url_data.url)
     parsed = urlparse(target_url)
@@ -297,6 +307,7 @@ async def analyze(url_data: AnalyzeRequest) -> dict[str, str]:
                 "url": target_url,
                 "verdict": "DANGER",
                 "reason": f"Matched active phishing indicator: {feed_match}",
+                "risk_score": 0,
             }
             set_cached_verdict(target_url, known_bad, ttl_seconds=3600)
             return known_bad
@@ -307,11 +318,23 @@ async def analyze(url_data: AnalyzeRequest) -> dict[str, str]:
     now = time.time()
     if now < _gemini_cooldown_until:
         wait_seconds = int(_gemini_cooldown_until - now)
-        return fallback_verdict(
+        cooldown_response = fallback_verdict(
             target_url,
             f"Gemini rate-limited. Try again in {wait_seconds}s.",
         )
+        set_cached_verdict(target_url, cooldown_response, ttl_seconds=max(5, min(wait_seconds, 60)))
+        return cooldown_response
 
+    inflight_since = _inflight_scans.get(target_url)
+    if inflight_since and (now - inflight_since) < INFLIGHT_SCAN_TTL_SECONDS:
+        in_progress_response = fallback_verdict(
+            target_url,
+            "Scan already in progress. Retry in 2s.",
+        )
+        set_cached_verdict(target_url, in_progress_response, ttl_seconds=2)
+        return in_progress_response
+
+    _inflight_scans[target_url] = time.time()
     try:
         result = call_gemini(target_url, api_key, recent_known_phish)
         set_cached_verdict(target_url, result)
@@ -326,7 +349,9 @@ async def analyze(url_data: AnalyzeRequest) -> dict[str, str]:
         if http_error.code == 429:
             retry_seconds = parse_retry_after_seconds(http_error.headers.get("Retry-After"))
             _gemini_cooldown_until = time.time() + retry_seconds
-            return fallback_verdict(target_url, f"Gemini HTTP 429 (rate limit). Retry in {retry_seconds}s.")
+            rate_limited = fallback_verdict(target_url, f"Gemini HTTP 429 (rate limit). Retry in {retry_seconds}s.")
+            set_cached_verdict(target_url, rate_limited, ttl_seconds=max(5, min(retry_seconds, 120)))
+            return rate_limited
         return fallback_verdict(target_url, f"Gemini HTTP error: {http_error.code}")
     except Exception as exc:
         traceback.print_exc()
@@ -334,3 +359,5 @@ async def analyze(url_data: AnalyzeRequest) -> dict[str, str]:
             target_url,
             f"Security gateway error while contacting Gemini: {type(exc).__name__}: {str(exc)[:180]}",
         )
+    finally:
+        _inflight_scans.pop(target_url, None)

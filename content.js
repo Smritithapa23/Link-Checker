@@ -1,12 +1,11 @@
-
-(function initShieldContentScript() {
-  if (window.__shieldContentScriptReady) {
+(function initLinkClickContentScript() {
+  if (window.__linkClickContentScriptReady) {
     return;
   }
-  window.__shieldContentScriptReady = true;
+  window.__linkClickContentScriptReady = true;
 
-  const ROOT_ID = 'shield-tech-overlay-root';
-  const STYLE_ID = 'shield-tech-overlay-style';
+  const ROOT_ID = 'linkclick-overlay-root';
+  const STYLE_ID = 'linkclick-overlay-style';
 
   function appendWhenDomReady(node, toHead = false) {
     const parent = toHead
@@ -15,7 +14,7 @@
 
     if (parent) {
       parent.appendChild(node);
-      return true;
+      return;
     }
 
     const onReady = () => {
@@ -25,10 +24,8 @@
       if (retryParent && !node.isConnected) {
         retryParent.appendChild(node);
       }
-      document.removeEventListener('DOMContentLoaded', onReady);
     };
     document.addEventListener('DOMContentLoaded', onReady, { once: true });
-    return false;
   }
 
   function ensureRoot() {
@@ -60,6 +57,7 @@
     if (document.getElementById(STYLE_ID)) {
       return;
     }
+
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
@@ -145,6 +143,13 @@
     return 5;
   }
 
+  function computedRiskScore(payload) {
+    if (payload && typeof payload.risk_score === 'number') {
+      return Math.max(0, Math.min(10, Math.round(payload.risk_score)));
+    }
+    return verdictScore(payload && payload.verdict);
+  }
+
   function verdictLabel(verdict) {
     if (verdict === 'SAFE') return 'Low Risk';
     if (verdict === 'SUSPICIOUS') return 'Medium Risk';
@@ -176,10 +181,7 @@
   function renderResult(payload) {
     ensureStyles();
     const root = showRoot();
-    const computedScore = verdictScore(payload && payload.verdict);
-    const score = payload && typeof payload.risk_score === 'number'
-      ? Math.max(0, Math.min(10, Math.round(payload.risk_score)))
-      : computedScore;
+    const score = computedRiskScore(payload);
     const reason = payload && payload.reason ? payload.reason : 'No details available.';
     const verdict = payload && payload.verdict ? payload.verdict : 'UNKNOWN';
     const risk = verdictLabel(verdict);
@@ -194,11 +196,10 @@
       </div>
     `;
 
-    window.clearTimeout(window.__shieldDismissTimer);
-    window.__shieldDismissTimer = window.setTimeout(() => {
+    window.clearTimeout(window.__linkClickDismissTimer);
+    window.__linkClickDismissTimer = window.setTimeout(() => {
       hideRoot();
     }, 12000);
-
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -212,8 +213,6 @@
     return true;
   });
 
-  // Always start hidden and clear any leftover UI from prior extension versions.
   hideRoot();
-
   console.log('LinkClick content script ready');
 })();

@@ -44,26 +44,43 @@ const App: React.FC<AppProps> = ({ isOverlay = false }) => {
 
   if (!isOverlay) {
     return (
-      <div className="w-80 p-6 flex flex-col items-center bg-white">
-        <div className="mb-4">
-          <div className="bg-blue-600 p-3 rounded-full shadow-lg">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+      <div className="w-[360px] rounded-xl border border-gray-200 bg-white shadow-xl">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-black text-white w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm">
+              LC
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">LinkClick</h1>
+              <p className="text-[11px] text-gray-500">Link risk analyzer</p>
+            </div>
           </div>
+          <span className="text-[10px] font-semibold px-2 py-1 rounded-full border border-gray-300 text-gray-700">
+            ACTIVE
+          </span>
         </div>
-        <h1 className="text-xl font-bold text-gray-800">LinkClick</h1>
-        <p className="text-center text-sm text-gray-500 mt-2">
-          Your AI guardian for the web. Right-click any link and select "Verify with LinkClick" to check its safety.
-        </p>
-        <div className="mt-6 w-full pt-4 border-t border-gray-100 flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            Real-time Phishing Detection
+
+        <div className="px-5 py-4 space-y-4">
+          <p className="text-sm text-gray-700">
+            Right-click any link and choose <span className="font-semibold">Verify with LinkClick</span>.
+          </p>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <p className="text-xs text-gray-500 mb-2">How results are shown</p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-700">Risk Score</span>
+              <span className="font-semibold text-gray-900">0 to 10</span>
+            </div>
+            <div className="flex items-center justify-between text-sm mt-1">
+              <span className="text-gray-700">Risk Class</span>
+              <span className="font-semibold text-gray-900">Low / Medium / High</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-            Powered by Gemini AI
+
+          <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="rounded-md border border-green-300 bg-green-50 px-2 py-1 text-center text-green-700">Safe</div>
+            <div className="rounded-md border border-yellow-300 bg-yellow-50 px-2 py-1 text-center text-yellow-700">Suspicious</div>
+            <div className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-center text-red-700">Danger</div>
           </div>
         </div>
       </div>

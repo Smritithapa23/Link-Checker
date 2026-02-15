@@ -1,0 +1,6 @@
+
+{
+  "name": "LinkClick Link Verifier",
+  "description": "A Chrome extension that adds a context menu to verify links using Gemini AI before visiting them.",
+  "requestFramePermissions": []
+}

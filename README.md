@@ -1,6 +1,6 @@
 # LinkClick
 
-LinkClick is a Chrome extension that lets you right-click any link and request an AI-driven risk rating before opening it.
+LinkClick is a Chrome extension that allows you to check link urls for phishing. By right-clicking a link and pressing "Verify with LinkClick", you can know the risk score form 1-10 and an explanation for why it was flagged as such.
 
 ## What It Does
 
@@ -167,3 +167,4 @@ Allowing this is required for backend-powered scanning.
 - Right-click flow is the primary behavior.
 - Auto page-load blocking is not part of current behavior.
 - Toggle ON/OFF is available in the extension popup and controls right-click scan execution.
+

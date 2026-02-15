@@ -1,15 +1,137 @@
-GHBanner
-Run Locally
+# LinkClick
 
-Prerequisites
+LinkClick is a Chrome extension that lets you right-click any link and request an AI-driven risk rating before opening it.
 
-Node.js
-Python 3.10+
-FastAPI + Uvicorn (pip install fastapi uvicorn)
-Setup
+## What It Does
 
-Install frontend dependencies: npm install
-Put your Gemini key in /Users/smriti/Personal_Git/version1/.env: GEMINI_API_KEY=your_key_here Optional Valkey (Vultr) cache: VALKEY_URL=redis://:<password>@<host>:<port>/0 VALKEY_PREFIX=shield:url: SHIELD_CACHE_TTL_SECONDS=1800 If using Valkey, install client: pip install redis
-Start the backend API from /Users/smriti/Personal_Git/version1: uvicorn main:app --reload --host 127.0.0.1 --port 8000
-In another terminal, build or run the extension frontend: npm run build (for Chrome extension dist) or npm run dev (for local web dev)
-The extension calls http://127.0.0.1:8000/analyze, and main.py now loads GEMINI_API_KEY from .env.
+- Adds a context menu action: `Verify with LinkClick`
+- Sends the selected URL to a local FastAPI backend
+- Returns:
+  - `Rating: 1-10` (`1 = high risk`, `10 = low risk`)
+  - explanation/reason text
+- Uses optional Valkey cache to reduce duplicate Gemini calls and improve speed
+
+## Project Layout
+
+- `background.ts`: extension background worker + context menu flow
+- `content.js`: in-page right-click result popup UI
+- `App.tsx`: extension popup (toolbar icon UI)
+- `main.py`: backend API (`/analyze`) + Gemini + cache logic
+- `public/manifest.json`: Chrome extension manifest
+
+## Prerequisites
+
+- Node.js 18+
+- Python 3.10+
+- Chrome (or Chromium-based browser)
+- Gemini API key
+
+Optional:
+- Valkey (local) for caching
+
+## Setup
+
+### 1. Install frontend deps
+
+```bash
+npm install
+```
+
+### 2. Install Python deps
+
+```bash
+pip install fastapi uvicorn redis certifi
+```
+
+### 3. Configure environment
+
+Create/update `/Users/smriti/Personal_Git/version1/.env`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+
+# Optional local Valkey cache
+VALKEY_URL=redis://127.0.0.1:6379/0
+VALKEY_PREFIX=linkclick:url:
+SHIELD_CACHE_TTL_SECONDS=1800
+```
+
+### 4. (Optional) Start local Valkey
+
+```bash
+brew install valkey
+brew services start valkey
+valkey-cli ping
+```
+
+Expected output:
+
+```text
+PONG
+```
+
+## Run
+
+### 1. Start backend API
+
+From project root:
+
+```bash
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### 2. Build extension
+
+```bash
+npm run build
+```
+
+### 3. Load extension in Chrome
+
+1. Open `chrome://extensions`
+2. Enable `Developer mode`
+3. Click `Load unpacked`
+4. Select `/Users/smriti/Personal_Git/version1/dist`
+
+### 4. Use LinkClick
+
+1. Open any webpage
+2. Right-click a link
+3. Click `Verify with LinkClick`
+4. Read rating + reason popup
+
+## Icon
+
+Extension icon is set to:
+
+- `public/gemini_logo.png`
+
+And referenced in manifest icons/action icons.
+
+## Common Issues
+
+### `Backend timeout/unreachable`
+
+Backend is not running or blocked.
+
+- Verify `uvicorn` is running on `127.0.0.1:8000`
+- Reload extension after backend starts
+
+### `Gemini HTTP error: 429`
+
+Gemini rate limit/quota exceeded.
+
+- Wait for cooldown and retry
+- Check Gemini plan/quota/billing
+- Valkey helps reduce repeated calls but cannot bypass quota limits
+
+### Local network permission prompt
+
+Chrome may ask permission because extension calls local backend (`127.0.0.1`).
+Allowing this is required for backend-powered scanning.
+
+## Notes
+
+- Right-click flow is the primary behavior.
+- Auto page-load blocking is not part of current behavior.
+- Toggle ON/OFF is available in the extension popup and controls right-click scan execution.

@@ -4,6 +4,11 @@
   "name": "LinkClick",
   "version": "1.0.0",
   "description": "Verify suspicious links with AI-powered security analysis.",
+  "icons": {
+    "16": "gemini_logo.png",
+    "48": "gemini_logo.png",
+    "128": "gemini_logo.png"
+  },
   "permissions": [
   "contextMenus",
   "tabs",
@@ -16,7 +21,12 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "index.html"
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "gemini_logo.png",
+      "48": "gemini_logo.png",
+      "128": "gemini_logo.png"
+    }
   },
   "content_scripts": [
     {

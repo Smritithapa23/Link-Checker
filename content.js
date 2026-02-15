@@ -150,13 +150,6 @@
     return verdictScore(payload && payload.verdict);
   }
 
-  function verdictLabel(verdict) {
-    if (verdict === 'SAFE') return 'Low Risk';
-    if (verdict === 'SUSPICIOUS') return 'Medium Risk';
-    if (verdict === 'DANGER') return 'High Risk';
-    return 'Unknown Risk';
-  }
-
   function verdictClass(verdict) {
     if (verdict === 'SAFE') return 'safe';
     if (verdict === 'SUSPICIOUS') return 'suspicious';
@@ -184,14 +177,13 @@
     const score = computedRiskScore(payload);
     const reason = payload && payload.reason ? payload.reason : 'No details available.';
     const verdict = payload && payload.verdict ? payload.verdict : 'UNKNOWN';
-    const risk = verdictLabel(verdict);
     const klass = verdictClass(verdict);
 
     root.innerHTML = `
       <div class="linkclick-card ${klass}">
         <p class="title">LinkClick</p>
-        <p class="score">Risk Score: ${score}/10</p>
-        <p class="risk">${risk} (${verdict})</p>
+        <p class="score">Rating: ${score}/10</p>
+        <p class="risk">1 = high risk, 10 = low risk</p>
         <p class="reason">${reason}</p>
       </div>
     `;

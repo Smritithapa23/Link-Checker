@@ -1,19 +1,44 @@
 {
-  "name": "Check Links",
-  "description": "Checks the links to see if it is malicious or not using Google Gemini for active checking",
-  "version": "1.0", 
-  "manifest_version": 3, 
+  "manifest_version": 3,
+  "name": "LinkClick",
+  "version": "1.0.0",
+  "description": "Verify suspicious links with AI-powered security analysis.",
+  "icons": {
+    "16": "gemini_logo.png",
+    "48": "gemini_logo.png",
+    "128": "gemini_logo.png"
+  },
   "permissions": [
-    "tabs",
     "contextMenus",
-    "notifications",
-    "webNavigation"
+    "tabs",
+    "storage",
+    "scripting",
+    "activeTab"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
-    "default_popup": "html_for_extension.html",
-    "default_icon": "gemini_logo.png"
-  }
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "gemini_logo.png",
+      "48": "gemini_logo.png",
+      "128": "gemini_logo.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_start"
+    }
+  ],
+  "host_permissions": [
+    "https://*.google.com/",
+    "https://generativelanguage.googleapis.com/",
+    "http://127.0.0.1:8000/*"
+  ]
 }

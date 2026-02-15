@@ -120,6 +120,17 @@ const sendWithFrameFallback = async (tabId: number, message: unknown, frameId?: 
   }
 };
 
+const isLinkClickEnabled = async (): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (!chrome.storage?.sync) {
+      resolve(true);
+      return;
+    }
+    chrome.storage.sync.get(['linkClickEnabled'], (data: { linkClickEnabled?: boolean }) => {
+      resolve(data.linkClickEnabled ?? true);
+    });
+  });
+
 const sendStartWithFastRetry = async (tabId: number, frameId?: number): Promise<boolean> => {
   try {
     await safeSendMessage(tabId, { type: 'VERIFICATION_START' }, 2, frameId, 60);
@@ -149,6 +160,12 @@ chrome.runtime.onInstalled.addListener(() => {
 // Handle the click
 chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
   if (info.menuItemId === "verify-link-shield" && info.linkUrl && tab?.id) {
+    const enabled = await isLinkClickEnabled();
+    if (!enabled) {
+      console.info("LinkClick is OFF. Ignoring right-click verification.");
+      return;
+    }
+
     if (!tab.url || !(tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
       console.warn(`Skipping unsupported tab URL: ${tab.url ?? 'unknown'}`);
       return;

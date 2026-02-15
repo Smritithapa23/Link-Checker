@@ -9,14 +9,14 @@ LinkClick is a Chrome extension that lets you right-click any link and request a
 - Returns:
   - `Rating: 1-10` (`1 = high risk`, `10 = low risk`)
   - explanation/reason text
-- Uses optional Valkey cache to reduce duplicate Gemini calls and improve speed
+- Uses Gemini first with Backboard fallback, plus optional Valkey caching
 
 ## Project Layout
 
 - `background.ts`: extension background worker + context menu flow
 - `content.js`: in-page right-click result popup UI
 - `App.tsx`: extension popup (toolbar icon UI)
-- `main.py`: backend API (`/analyze`) + Gemini + cache logic
+- `main.py`: backend API (`/analyze`) + provider fallback (Gemini -> Backboard) + cache logic
 - `public/manifest.json`: Chrome extension manifest
 
 ## Prerequisites
@@ -24,12 +24,20 @@ LinkClick is a Chrome extension that lets you right-click any link and request a
 - Node.js 18+
 - Python 3.10+
 - Chrome (or Chromium-based browser)
-- Gemini API key
+- Gemini API key (and optional Backboard API key for fallback)
 
 Optional:
 - Valkey (local) for caching
 
 ## Setup
+
+### One-time setup (copy/paste)
+
+```bash
+cd /Users/smriti/Personal_Git/pp
+npm install
+python3 -m pip install fastapi uvicorn redis certifi
+```
 
 ### 1. Install frontend deps
 
@@ -45,15 +53,23 @@ pip install fastapi uvicorn redis certifi
 
 ### 3. Configure environment
 
-Create/update `/Users/smriti/Personal_Git/version1/.env`:
+Create/update `/Users/smriti/Personal_Git/pp/.env`:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
+BACKBOARD_API_KEY=your_backboard_api_key
 
 # Optional local Valkey cache
 VALKEY_URL=redis://127.0.0.1:6379/0
 VALKEY_PREFIX=linkclick:url:
 SHIELD_CACHE_TTL_SECONDS=1800
+
+# Optional provider timing (keeps scans responsive)
+ANALYZE_BUDGET_SECONDS=6.5
+GEMINI_TIMEOUT_SECONDS=2.0
+BACKBOARD_TIMEOUT_SECONDS=6.0
+MIN_PROVIDER_TIMEOUT_SECONDS=0.8
+PHISH_FEED_TIMEOUT_SECONDS=1.25
 ```
 
 ### 4. (Optional) Start local Valkey
@@ -71,6 +87,22 @@ PONG
 ```
 
 ## Run
+
+### Start everything (copy/paste)
+
+Terminal 1 (backend):
+
+```bash
+cd /Users/smriti/Personal_Git/pp
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Terminal 2 (build extension):
+
+```bash
+cd /Users/smriti/Personal_Git/pp
+npm run build
+```
 
 ### 1. Start backend API
 
@@ -91,7 +123,7 @@ npm run build
 1. Open `chrome://extensions`
 2. Enable `Developer mode`
 3. Click `Load unpacked`
-4. Select `/Users/smriti/Personal_Git/version1/dist`
+4. Select `/Users/smriti/Personal_Git/pp/dist`
 
 ### 4. Use LinkClick
 

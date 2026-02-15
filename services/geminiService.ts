@@ -51,7 +51,7 @@
 import { SafetyVerdict, VerificationResult } from "../types";
 
 const BACKEND_URLS = ['http://127.0.0.1:8000/analyze'];
-const BACKEND_TIMEOUT_MS = 3500;
+const BACKEND_TIMEOUT_MS = 12000;
 
 const fetchWithTimeout = async (endpoint: string, url: string) => {
   const controller = new AbortController();

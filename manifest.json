@@ -9,7 +9,6 @@
     "notifications",
     "webNavigation"
   ],
-  "host_permissions": ["http://localhost:8000/*", "https://your-vultr-ip/*"],
   "background": {
     "service_worker": "background.js"
   },

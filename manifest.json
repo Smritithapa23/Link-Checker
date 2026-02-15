@@ -13,6 +13,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "html_for_extension.html"
+    "default_popup": "html_for_extension.html",
+    "default_icon": "gemini_logo.png"
   }
 }

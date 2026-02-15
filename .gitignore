@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Logs
 logs
 *.log
@@ -23,3 +24,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+=======
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/git/FileContentIndex
+>>>>>>> 0cabc2f066c129cea612b9ef9fee18c9d9de2f47

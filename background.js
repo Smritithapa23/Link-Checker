@@ -14,14 +14,8 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "checkLink") {
-      const linkUrl = info.linkUrl;
-      console.log("Checking URL: ", linkUrl);
-    }
-  });
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'loading') {
-      chrome.tabs.sendMessage(tabId, { action: 'checkPage' });
+      console.log("Checking this URL:", info.linkUrl);
+      alert("Checking link: " + info.linkUrl);
     }
   });
 
